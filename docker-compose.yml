@@ -1,0 +1,46 @@
+version: '3.9'
+
+services:
+  api:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      AWS_REGION_NAME: 'us-east-1'
+      AWS_ACCESS_KEY_ID: 'ID123'
+      AWS_SECRET_ACCESS_KEY: 'KEY123'
+      DYNAMODB_URL: 'http://dynamodb:8000'
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./backend/src:/api/src
+  dynamodb:
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    image: "amazon/dynamodb-local:latest"
+    user: root
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./docker/dynamodb:/home/dynamodblocal/data"
+    working_dir: /home/dynamodblocal
+    healthcheck:
+      test: ["CMD-SHELL", '[ "$(curl -s -o /dev/null -I -w ''%{http_code}'' http://localhost:8000)" == "400" ]']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  dynamodb-table-setup:
+    depends_on:
+      dynamodb:
+        condition: service_healthy 
+    image: amazon/aws-cli
+    volumes:
+      - "./schemas:/tmp/dynamo"
+    environment:
+      AWS_ACCESS_KEY_ID: 'ID123'
+      AWS_SECRET_ACCESS_KEY: 'KEY123'
+      AWS_REGION: 'us-east-1'
+    entrypoint:
+      - bash
+    command:
+      '-c "for f in /tmp/dynamo/*.json; do aws dynamodb create-table --endpoint-url "http://dynamodb:8000" --cli-input-json file://"$${f#./}"; done"'
