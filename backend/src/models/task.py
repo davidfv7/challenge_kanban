@@ -4,8 +4,8 @@ from pydantic import BaseModel
 
 class TaskStatus(str, Enum):
     Backlog = "Backlog"
-    To_Do = "To Do"
-    In_Progress = "In Progress"
+    To_Do = "To_Do"
+    In_Progress = "In_Progress"
     Testing = "Testing"
     Done = "Done"
 
